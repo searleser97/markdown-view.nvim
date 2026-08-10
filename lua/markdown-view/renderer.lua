@@ -8,8 +8,12 @@ local function flatten(chunks)
   return result
 end
 
-local function table_replacements(buf, width)
-  local table_config = vim.deepcopy(require('markdown-table.config').values)
+local function table_replacements(buf, width, overrides)
+  local table_config = vim.tbl_deep_extend(
+    'force',
+    vim.deepcopy(require('markdown-table.config').defaults),
+    overrides or {}
+  )
   table_config.max_width = width
   local renderer = require('markdown-table.renderer')
   local result = {}
@@ -40,11 +44,10 @@ local function mermaid_source(block, config)
   return source, legend
 end
 
-local function mermaid_replacement(block, callback)
-  local mermaid = require('mermaid-nvim')
+local function mermaid_replacement(block, mermaid_config, callback)
   local cache = require('mermaid-nvim.cache')
-  local source, legend = mermaid_source(block, mermaid.config)
-  local hash = cache.hash(source, mermaid.config.cmd)
+  local source, legend = mermaid_source(block, mermaid_config)
+  local hash = cache.hash(source, mermaid_config.cmd)
   local cached = cache.get(hash)
 
   local function finish(output)
@@ -88,7 +91,7 @@ local function mermaid_replacement(block, callback)
     })
   end
 
-  local ok, error_message = pcall(vim.system, mermaid.config.cmd, {
+  local ok, error_message = pcall(vim.system, mermaid_config.cmd, {
     stdin = source,
     text = true,
     env = env,
@@ -150,7 +153,7 @@ end
 
 function M.render(buf, width, opts, callback)
   local source_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-  local replacements = opts.render_tables and table_replacements(buf, width) or {}
+  local replacements = opts.render_tables and table_replacements(buf, width, opts.tables) or {}
   local blocks = opts.render_mermaid and require('mermaid-nvim.scanner').find_blocks(buf) or {}
 
   if #blocks == 0 then
@@ -160,7 +163,7 @@ function M.render(buf, width, opts, callback)
 
   local remaining = #blocks
   for _, block in ipairs(blocks) do
-    mermaid_replacement(block, function(replacement)
+    mermaid_replacement(block, opts.mermaid, function(replacement)
       replacements[#replacements + 1] = replacement
       remaining = remaining - 1
       if remaining == 0 then

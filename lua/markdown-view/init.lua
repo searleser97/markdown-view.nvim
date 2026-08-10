@@ -9,6 +9,18 @@ local views = {}
 local source_views = {}
 local generations = {}
 
+local function define_highlights()
+  vim.api.nvim_set_hl(0, 'MarkdownViewTableBorder', { link = 'Comment', default = true })
+  vim.api.nvim_set_hl(0, 'MarkdownViewTableHeader', { link = 'Title', default = true })
+  vim.api.nvim_set_hl(0, 'MarkdownViewTableRow', { link = 'Normal', default = true })
+end
+
+define_highlights()
+vim.api.nvim_create_autocmd('ColorScheme', {
+  group = group,
+  callback = define_highlights,
+})
+
 local function cleanup_state(view_buf, state)
   if state and state.source_autocmd then
     pcall(vim.api.nvim_del_autocmd, state.source_autocmd)

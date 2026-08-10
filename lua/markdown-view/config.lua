@@ -8,6 +8,18 @@ M.defaults = {
   render_tables = true,
   render_mermaid = true,
   toggle_keys = { 'q', '<Esc>', 'e' },
+  tables = {
+    highlights = {
+      border = 'MarkdownViewTableBorder',
+      header = 'MarkdownViewTableHeader',
+      row = 'MarkdownViewTableRow',
+    },
+  },
+  mermaid = {
+    cmd = { 'termaid' },
+    shorten_labels = false,
+    shorten_labels_hints = true,
+  },
 }
 
 M.values = vim.deepcopy(M.defaults)
