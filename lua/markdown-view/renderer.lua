@@ -30,84 +30,25 @@ local function table_replacements(buf, width, overrides)
   return result
 end
 
-local function mermaid_source(block, config)
-  local source = block.source
-  local legend
-  if config.shorten_labels then
-    local shortener = require('mermaid-nvim.label_shortener')
-    local result = shortener.shorten(block.source, config.shorten_labels_hints)
-    if result then
-      source = result.source
-      legend = shortener.format_legend(result.mappings)
-    end
-  end
-  return source, legend
-end
-
 local function mermaid_replacement(block, mermaid_config, callback)
-  local cache = require('mermaid-nvim.cache')
-  local source, legend = mermaid_source(block, mermaid_config)
-  local hash = cache.hash(source, mermaid_config.cmd)
-  local cached = cache.get(hash)
-
-  local function finish(output)
-    local lines = {}
-    local chunks = {}
-    for _, line in ipairs(legend or {}) do
-      lines[#lines + 1] = line
-      chunks[#chunks + 1] = { { line, mermaid_config.legend_highlight } }
-    end
-    if legend and #legend > 0 then
-      lines[#lines + 1] = ''
-      chunks[#chunks + 1] = { { '', 'Normal' } }
-    end
-    for _, line in ipairs(vim.split(output:gsub('\n$', ''), '\n', { plain = true })) do
-      lines[#lines + 1] = line
-      chunks[#chunks + 1] = { { line, mermaid_config.highlight } }
+  require('mermaid-nvim.renderer').render_text(block.source, mermaid_config, function(result)
+    if result.error then
+      local message = tostring(result.error):gsub('\n', ' '):sub(1, 120)
+      callback({
+        start_row = block.start_row,
+        end_row = block.end_row,
+        lines = { '⚠ Mermaid render error: ' .. message },
+        chunks = { { { '⚠ Mermaid render error: ' .. message, 'DiagnosticError' } } },
+      })
+      return
     end
     callback({
       start_row = block.start_row,
       end_row = block.end_row,
-      lines = lines,
-      chunks = chunks,
+      lines = result.lines,
+      chunks = result.chunks,
     })
-  end
-
-  if cached then
-    finish(cached)
-    return
-  end
-
-  local env = vim.fn.environ()
-  env.PYTHONIOENCODING = 'utf-8'
-
-  local function fail(message)
-    message = tostring(message):gsub('\n', ' '):sub(1, 120)
-    callback({
-      start_row = block.start_row,
-      end_row = block.end_row,
-      lines = { '⚠ Mermaid render error: ' .. message },
-      chunks = { { { '⚠ Mermaid render error: ' .. message, 'DiagnosticError' } } },
-    })
-  end
-
-  local ok, error_message = pcall(vim.system, mermaid_config.cmd, {
-    stdin = source,
-    text = true,
-    env = env,
-  }, function(result)
-    vim.schedule(function()
-      if result.code == 0 and result.stdout and result.stdout ~= '' then
-        cache.set(hash, result.stdout)
-        finish(result.stdout)
-      else
-        fail(result.stderr or 'unknown render error')
-      end
-    end)
   end)
-  if not ok then
-    fail(error_message)
-  end
 end
 
 local function merge(source_lines, replacements)

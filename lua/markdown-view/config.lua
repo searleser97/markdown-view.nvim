@@ -17,8 +17,10 @@ M.defaults = {
   },
   mermaid = {
     cmd = { 'termaid' },
-    highlight = 'DiagnosticInfo',
-    legend_highlight = 'DiagnosticInfo',
+    highlights = {
+      diagram = 'DiagnosticInfo',
+      legend = 'DiagnosticInfo',
+    },
     shorten_labels = false,
     shorten_labels_hints = true,
   },
