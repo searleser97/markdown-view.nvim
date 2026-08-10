@@ -52,6 +52,7 @@ require('markdown-view').setup({
   },
   mermaid = {
     cmd = { 'termaid', '--padding-x', '2', '--padding-y', '0' },
+    highlight = 'DiagnosticInfo',
     shorten_labels = false,
   },
 })

@@ -55,7 +55,7 @@ local function mermaid_replacement(block, mermaid_config, callback)
     local chunks = {}
     for _, line in ipairs(legend or {}) do
       lines[#lines + 1] = line
-      chunks[#chunks + 1] = { { line, 'DiagnosticInfo' } }
+      chunks[#chunks + 1] = { { line, mermaid_config.legend_highlight } }
     end
     if legend and #legend > 0 then
       lines[#lines + 1] = ''
@@ -63,7 +63,7 @@ local function mermaid_replacement(block, mermaid_config, callback)
     end
     for _, line in ipairs(vim.split(output:gsub('\n$', ''), '\n', { plain = true })) do
       lines[#lines + 1] = line
-      chunks[#chunks + 1] = { { line, 'Comment' } }
+      chunks[#chunks + 1] = { { line, mermaid_config.highlight } }
     end
     callback({
       start_row = block.start_row,
