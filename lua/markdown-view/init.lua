@@ -243,8 +243,6 @@ local function create_view(source_buf, mode)
   vim.b[view_buf].markdown_view = true
   vim.bo[view_buf].filetype = 'markdown'
   vim.wo[win].wrap = false
-  vim.wo[win].number = false
-  vim.wo[win].relativenumber = false
   vim.wo[win].signcolumn = 'no'
   vim.wo[win].cursorline = false
 
