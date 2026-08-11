@@ -8,6 +8,17 @@ local function flatten(chunks)
   return result
 end
 
+local function escape_markdown_brackets(chunks)
+  local escaped = {}
+  for index, chunk in ipairs(chunks) do
+    escaped[index] = vim.deepcopy(chunk)
+    escaped[index][1] = escaped[index][1]
+      :gsub('%[', '\\[')
+      :gsub('%]', '\\]')
+  end
+  return escaped
+end
+
 local function table_replacements(buf, width, overrides)
   local table_config = vim.tbl_deep_extend(
     'force',
@@ -42,11 +53,12 @@ local function mermaid_replacement(block, mermaid_config, callback)
       })
       return
     end
+    local chunks = vim.tbl_map(escape_markdown_brackets, result.chunks)
     callback({
       start_row = block.start_row,
       end_row = block.end_row,
-      lines = result.lines,
-      chunks = result.chunks,
+      lines = vim.tbl_map(flatten, chunks),
+      chunks = chunks,
     })
   end)
 end
