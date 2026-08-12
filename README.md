@@ -42,10 +42,11 @@ is preserved in both directions.
 ```lua
 require('markdown-view').setup({
   open_mode = 'replace', -- 'replace' or 'tab'
+  auto_open = false,
+  auto_open_delay_ms = 100,
   refresh_delay_ms = 200,
   render_tables = true,
   render_mermaid = true,
-  edit_on_insert = false, -- Edit the source when an Insert/Replace command starts
   tables = {
     padding = 1,
     min_column_width = 3,
@@ -65,6 +66,9 @@ require('markdown-view').setup({
 The `tables` and `mermaid` options are local to generated Markdown view buffers.
 They do not read or modify the active configuration of either dependency.
 
+When `auto_open` is enabled, regular Markdown files open in rendered view after
+`auto_open_delay_ms`. Generated, unnamed, and non-file buffers are ignored.
+
 ## Commands
 
 | Command | Description |
@@ -75,11 +79,15 @@ They do not read or modify the active configuration of either dependency.
 | `:MarkdownViewRefresh` | Refresh the current rendered view |
 | `:MarkdownViewClose` | Close the view and return to the source |
 
-Inside a rendered view:
+## Lua API
 
-- Insert and Replace commands target the source when `edit_on_insert` is enabled.
-- `q` or `Esc` toggles back to the source while retaining the view.
-- `r` refreshes the rendered content.
+- `require('markdown-view').open(buf)` opens the rendered view for a source buffer.
+- `require('markdown-view').edit(buf)` returns a rendered view buffer to its source.
+- `require('markdown-view').refresh()` refreshes the current rendered view.
+- `require('markdown-view').close()` closes the current rendered view.
+
+The plugin does not define key mappings. Configure mappings and automatic
+view/edit transitions in your Neovim configuration using the Lua API.
 
 `markdown-view.nvim` enables `render-markdown.nvim` only for its generated
 buffer and directly uses the table and Mermaid rendering modules. The table and

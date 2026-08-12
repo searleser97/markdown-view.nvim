@@ -8,19 +8,7 @@ local group = vim.api.nvim_create_augroup('markdown_view_nvim', { clear = true }
 local views = {}
 local source_views = {}
 local generations = {}
-local insert_commands = {
-  i = true,
-  I = true,
-  a = true,
-  A = true,
-  o = true,
-  O = true,
-  s = true,
-  S = true,
-  c = true,
-  C = true,
-  R = true,
-}
+local auto_open_autocmd
 
 local function define_highlights()
   vim.api.nvim_set_hl(0, 'MarkdownViewTableBorder', { link = 'Comment', default = true })
@@ -53,6 +41,42 @@ local function eligible(buf)
     and vim.api.nvim_buf_is_valid(buf)
     and vim.tbl_contains(config.values.file_types, vim.bo[buf].filetype)
     and not vim.api.nvim_buf_get_name(buf):match('^markdown%-view://')
+end
+
+local function schedule_auto_open(buf)
+  if not config.values.auto_open
+    or not eligible(buf)
+    or vim.bo[buf].buftype ~= ''
+    or vim.api.nvim_buf_get_name(buf) == ''
+    or vim.fn.filereadable(vim.api.nvim_buf_get_name(buf)) ~= 1
+  then
+    return
+  end
+
+  vim.defer_fn(function()
+    if config.values.auto_open and vim.api.nvim_get_current_buf() == buf and eligible(buf) then
+      M.open(buf)
+    end
+  end, config.values.auto_open_delay_ms)
+end
+
+local function configure_auto_open()
+  if auto_open_autocmd then
+    pcall(vim.api.nvim_del_autocmd, auto_open_autocmd)
+    auto_open_autocmd = nil
+  end
+  if not config.values.auto_open then
+    return
+  end
+
+  auto_open_autocmd = vim.api.nvim_create_autocmd('FileType', {
+    group = group,
+    pattern = config.values.file_types,
+    callback = function(args)
+      schedule_auto_open(args.buf)
+    end,
+  })
+  schedule_auto_open(vim.api.nvim_get_current_buf())
 end
 
 local function clamp_cursor(buf, cursor)
@@ -143,20 +167,6 @@ local function show_view(view_buf, source_position)
       refresh_markdown(state)
     end
   end
-end
-
-local function configure_edit_on_insert()
-  if not config.values.edit_on_insert then
-    vim.on_key(nil, namespace)
-    return
-  end
-
-  vim.on_key(function(key)
-    local view_buf = vim.api.nvim_get_current_buf()
-    if views[view_buf] and vim.api.nvim_get_mode().mode:sub(1, 1) == 'n' and insert_commands[key] then
-      show_source(view_buf)
-    end
-  end, namespace)
 end
 
 local function close_view(buf)
@@ -273,23 +283,6 @@ local function create_view(source_buf, mode)
   vim.wo[win].signcolumn = 'no'
   vim.wo[win].cursorline = false
 
-  for _, key in ipairs(config.values.toggle_keys) do
-    vim.keymap.set('n', key, function()
-      show_source(view_buf)
-    end, { buffer = view_buf, nowait = true })
-  end
-  vim.keymap.set('n', 'r', function()
-    render_view(view_buf)
-  end, { buffer = view_buf, nowait = true, desc = 'Refresh Markdown view' })
-  vim.api.nvim_create_autocmd('InsertEnter', {
-    group = group,
-    buffer = view_buf,
-    callback = function()
-      if config.values.edit_on_insert then
-        show_source(view_buf)
-      end
-    end,
-  })
   vim.api.nvim_create_autocmd('BufWipeout', {
     group = group,
     buffer = view_buf,
@@ -322,7 +315,6 @@ local function create_view(source_buf, mode)
       end)
     end,
   })
-
   render_view(view_buf)
   return view_buf
 end
@@ -350,10 +342,21 @@ end
 function M.toggle()
   local buf = vim.api.nvim_get_current_buf()
   if views[buf] then
-    show_source(buf)
+    return M.edit(buf)
+  end
+  return M.open(buf)
+end
+
+function M.edit(buf)
+  if not buf or buf == 0 then
+    buf = vim.api.nvim_get_current_buf()
+  end
+  local state = views[buf]
+  if not state then
     return
   end
-  M.open(buf)
+  show_source(buf)
+  return state.source_buf
 end
 
 function M.refresh()
@@ -369,7 +372,7 @@ end
 
 function M.setup(opts)
   config.setup(opts)
-  configure_edit_on_insert()
+  configure_auto_open()
 end
 
 return M
