@@ -45,6 +45,7 @@ require('markdown-view').setup({
   refresh_delay_ms = 200,
   render_tables = true,
   render_mermaid = true,
+  edit_on_insert = false, -- Edit the source when an Insert/Replace command starts
   tables = {
     padding = 1,
     min_column_width = 3,
@@ -76,7 +77,8 @@ They do not read or modify the active configuration of either dependency.
 
 Inside a rendered view:
 
-- `q`, `Esc`, or `e` toggles back to the source while retaining the view.
+- Insert and Replace commands target the source when `edit_on_insert` is enabled.
+- `q` or `Esc` toggles back to the source while retaining the view.
 - `r` refreshes the rendered content.
 
 `markdown-view.nvim` enables `render-markdown.nvim` only for its generated

@@ -8,6 +8,19 @@ local group = vim.api.nvim_create_augroup('markdown_view_nvim', { clear = true }
 local views = {}
 local source_views = {}
 local generations = {}
+local insert_commands = {
+  i = true,
+  I = true,
+  a = true,
+  A = true,
+  o = true,
+  O = true,
+  s = true,
+  S = true,
+  c = true,
+  C = true,
+  R = true,
+}
 
 local function define_highlights()
   vim.api.nvim_set_hl(0, 'MarkdownViewTableBorder', { link = 'Comment', default = true })
@@ -132,6 +145,20 @@ local function show_view(view_buf, source_position)
   end
 end
 
+local function configure_edit_on_insert()
+  if not config.values.edit_on_insert then
+    vim.on_key(nil, namespace)
+    return
+  end
+
+  vim.on_key(function(key)
+    local view_buf = vim.api.nvim_get_current_buf()
+    if views[view_buf] and vim.api.nvim_get_mode().mode:sub(1, 1) == 'n' and insert_commands[key] then
+      show_source(view_buf)
+    end
+  end, namespace)
+end
+
 local function close_view(buf)
   local state = views[buf]
   if not state then
@@ -254,6 +281,15 @@ local function create_view(source_buf, mode)
   vim.keymap.set('n', 'r', function()
     render_view(view_buf)
   end, { buffer = view_buf, nowait = true, desc = 'Refresh Markdown view' })
+  vim.api.nvim_create_autocmd('InsertEnter', {
+    group = group,
+    buffer = view_buf,
+    callback = function()
+      if config.values.edit_on_insert then
+        show_source(view_buf)
+      end
+    end,
+  })
   vim.api.nvim_create_autocmd('BufWipeout', {
     group = group,
     buffer = view_buf,
@@ -333,6 +369,7 @@ end
 
 function M.setup(opts)
   config.setup(opts)
+  configure_edit_on_insert()
 end
 
 return M
