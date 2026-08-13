@@ -229,6 +229,7 @@ local function render_view(view_buf)
       return
     end
     vim.bo[view_buf].modifiable = true
+    vim.bo[view_buf].readonly = false
     vim.api.nvim_buf_set_lines(view_buf, 0, -1, false, lines)
     vim.bo[view_buf].modifiable = false
     vim.bo[view_buf].readonly = true
@@ -242,6 +243,19 @@ local function render_view(view_buf)
     end
   end)
 end
+
+vim.api.nvim_create_autocmd('BufReadCmd', {
+  group = group,
+  pattern = 'markdown-view://*',
+  callback = function(args)
+    if not views[args.buf] then
+      return
+    end
+    vim.defer_fn(function()
+      render_view(args.buf)
+    end, 1)
+  end,
+})
 
 local function create_view(source_buf, mode)
   local source_name = vim.api.nvim_buf_get_name(source_buf)
