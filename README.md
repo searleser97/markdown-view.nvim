@@ -92,5 +92,9 @@ view/edit transitions in your Neovim configuration using the Lua API.
 `markdown-view.nvim` enables `render-markdown.nvim` only for its generated
 buffer and directly uses the table and Mermaid rendering modules. The table and
 Mermaid dependencies do not need to be configured unless they are also used
-independently in source buffers. Reloading a generated view with `:edit`
-rerenders it from the source buffer.
+independently in source buffers.
+
+The rendered document always comes from the current source buffer, including
+unsaved changes. Reloading either buffer with `:edit` keeps both synchronized:
+an unmodified source is reloaded from disk, while a modified source remains
+authoritative and is rendered without discarding its changes.

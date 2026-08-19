@@ -29,6 +29,9 @@ local function cleanup_state(view_buf, state)
   if state and state.source_wipe_autocmd then
     pcall(vim.api.nvim_del_autocmd, state.source_wipe_autocmd)
   end
+  if state and state.view_cursor_autocmd then
+    pcall(vim.api.nvim_del_autocmd, state.view_cursor_autocmd)
+  end
   views[view_buf] = nil
   if state then
     source_views[state.source_buf] = nil
@@ -248,8 +251,15 @@ vim.api.nvim_create_autocmd('BufReadCmd', {
   group = group,
   pattern = 'markdown-view://*',
   callback = function(args)
-    if not views[args.buf] then
+    local state = views[args.buf]
+    if not state or not vim.api.nvim_buf_is_valid(state.source_buf) then
       return
+    end
+    state.pending_source_cursor = state.last_source_cursor
+    if not vim.bo[state.source_buf].modified then
+      vim.api.nvim_buf_call(state.source_buf, function()
+        vim.cmd('edit')
+      end)
     end
     vim.defer_fn(function()
       render_view(args.buf)
@@ -297,6 +307,20 @@ local function create_view(source_buf, mode)
   vim.wo[win].signcolumn = 'no'
   vim.wo[win].cursorline = false
 
+  views[view_buf].view_cursor_autocmd = vim.api.nvim_create_autocmd('CursorMoved', {
+    group = group,
+    buffer = view_buf,
+    callback = function()
+      local state = views[view_buf]
+      if state
+        and state.source_map
+        and vim.api.nvim_win_is_valid(state.win)
+        and vim.api.nvim_win_get_buf(state.win) == view_buf
+      then
+        state.last_source_cursor = source_cursor(state, vim.api.nvim_win_get_cursor(state.win))
+      end
+    end,
+  })
   vim.api.nvim_create_autocmd('BufWipeout', {
     group = group,
     buffer = view_buf,
@@ -305,7 +329,7 @@ local function create_view(source_buf, mode)
       cleanup_state(view_buf, views[view_buf])
     end,
   })
-  views[view_buf].source_autocmd = vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
+  views[view_buf].source_autocmd = vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'BufReadPost' }, {
     group = group,
     buffer = source_buf,
     callback = function()
